@@ -451,6 +451,13 @@ function recalculateCjkTokenCounts(db: DatabaseSync): void {
 
   db.exec("BEGIN");
   try {
+    // CJK character detection — only recalculate rows that actually
+    // contain CJK text.  Pure-ASCII rows already have correct counts
+    // (both formulas agree) and may have been set by an external
+    // tokenizer, so we must not overwrite them.
+    const CJK_RE =
+      /[\u2E80-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\uAC00-\uD7AF\u3040-\u309F\u30A0-\u30FF\uFF00-\uFFEF\u3000-\u303F]/;
+
     // --- Messages ---
     const messages = db
       .prepare(`SELECT message_id, content FROM messages`)
@@ -462,6 +469,7 @@ function recalculateCjkTokenCounts(db: DatabaseSync): void {
       );
       let messagesUpdated = 0;
       for (const msg of messages) {
+        if (!CJK_RE.test(msg.content)) continue;
         const newCount = estimateTokens(msg.content);
         updateMsg.run(newCount, msg.message_id);
         messagesUpdated++;
@@ -484,6 +492,7 @@ function recalculateCjkTokenCounts(db: DatabaseSync): void {
       );
       let summariesUpdated = 0;
       for (const sum of summaries) {
+        if (!CJK_RE.test(sum.content)) continue;
         const newCount = estimateTokens(sum.content);
         updateSum.run(newCount, sum.summary_id);
         summariesUpdated++;
@@ -663,10 +672,13 @@ export function runLcmMigrations(
   ensureSummaryDepthColumn(db);
   ensureSummaryMetadataColumns(db);
   ensureSummaryModelColumn(db);
+  // CJK recount MUST run before backfillSummaryMetadata so that
+  // derived fields (source_message_token_count, descendant_token_count)
+  // are computed from corrected token_count values.
+  recalculateCjkTokenCounts(db);
   backfillSummaryDepths(db);
   backfillSummaryMetadata(db);
   backfillToolCallColumns(db);
-  recalculateCjkTokenCounts(db);
 
   const fts5Available = options?.fts5Available ?? getLcmDbFeatures(db).fts5Available;
   if (!fts5Available) {

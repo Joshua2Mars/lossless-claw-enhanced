@@ -1747,7 +1747,7 @@ export class LcmContextEngine implements ContextEngine {
               .prepare(`DELETE FROM summary_messages WHERE summary_id IN (SELECT summary_id FROM summaries WHERE conversation_id = ?)`)
               .run(conversationId);
             this.db
-              .prepare(`DELETE FROM summary_parents WHERE summary_id IN (SELECT summary_id FROM summaries WHERE conversation_id = ?) OR parent_id IN (SELECT summary_id FROM summaries WHERE conversation_id = ?)`)
+              .prepare(`DELETE FROM summary_parents WHERE summary_id IN (SELECT summary_id FROM summaries WHERE conversation_id = ?) OR parent_summary_id IN (SELECT summary_id FROM summaries WHERE conversation_id = ?)`)
               .run(conversationId, conversationId);
             this.db
               .prepare(`DELETE FROM summaries WHERE conversation_id = ?`)
@@ -1758,10 +1758,17 @@ export class LcmContextEngine implements ContextEngine {
             this.db
               .prepare(`DELETE FROM large_files WHERE conversation_id = ?`)
               .run(conversationId);
-            // messages_fts is a contentless FTS5 table — must be cleaned explicitly.
-            this.db
-              .prepare(`DELETE FROM messages_fts WHERE rowid IN (SELECT message_id FROM messages WHERE conversation_id = ?)`)
-              .run(conversationId);
+            // FTS tables — guard against runtimes where FTS5 is not available.
+            try {
+              this.db
+                .prepare(`DELETE FROM messages_fts WHERE rowid IN (SELECT message_id FROM messages WHERE conversation_id = ?)`)
+                .run(conversationId);
+            } catch (_) { /* FTS5 not available — skip */ }
+            try {
+              this.db
+                .prepare(`DELETE FROM summaries_fts WHERE rowid IN (SELECT rowid FROM summaries_fts_content WHERE c0 IN (SELECT summary_id FROM summaries WHERE conversation_id = ?))`)
+                .run(conversationId);
+            } catch (_) { /* summaries_fts not available or empty — skip */ }
             const msgCount = this.db
               .prepare(`DELETE FROM messages WHERE conversation_id = ?`)
               .run(conversationId).changes;
