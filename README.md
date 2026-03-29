@@ -9,10 +9,10 @@ Lossless Context Management plugin for [OpenClaw](https://github.com/openclaw/op
 > Full walkthrough: installation, configuration, and hybrid retrieval internals.
 
 [![YouTube Video](https://img.shields.io/badge/YouTube-Watch%20Now-red?style=for-the-badge&logo=youtube)](https://youtu.be/m21PNaIW3N4)
-**https://youtu.be/MtukF1C8epQ**
+**https://youtu.be/m21PNaIW3N4**
 
 [![Bilibili Video](https://img.shields.io/badge/Bilibili-Watch%20Now-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white)](https://www.bilibili.com/video/BV1MKXQBRE9d/)
-**https://www.bilibili.com/video/BV1zUf2BGEgn/**
+**https://www.bilibili.com/video/BV1MKXQBRE9d/**
 
 
 
