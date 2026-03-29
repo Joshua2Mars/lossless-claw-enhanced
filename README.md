@@ -148,11 +148,54 @@ LCM is configured through plugin config and environment variables. Environment v
 | `LCM_FRESH_TAIL_COUNT` | `32` | Messages protected from compaction |
 | `LCM_INCREMENTAL_MAX_DEPTH` | `0` | Compaction cascade depth (`-1` = unlimited) |
 | `LCM_LEAF_CHUNK_TOKENS` | `20000` | Max source tokens per leaf compaction |
-| `LCM_SUMMARY_MODEL` | `""` | Model override for summarization |
+| `LCM_SUMMARY_MODEL` | `""` | Model override for summarization (see below) |
+| `LCM_SUMMARY_PROVIDER` | `""` | Provider override for summarization (see below) |
 | `LCM_IGNORE_SESSION_PATTERNS` | `""` | Glob patterns to exclude from LCM |
 | `LCM_DATABASE_PATH` | `~/.openclaw/lcm.db` | SQLite database path |
 
 See upstream [README](https://github.com/Martian-Engineering/lossless-claw#configuration) for the full configuration reference.
+
+### Summarization model
+
+LCM uses an LLM to generate summaries during compaction. You can use **any model from any provider configured in OpenClaw** — there is no hardcoded provider list.
+
+**Configuration priority** (highest to lowest):
+
+1. Environment variables `LCM_SUMMARY_MODEL` + `LCM_SUMMARY_PROVIDER`
+2. Plugin config `summaryModel` (+ optional `summaryProvider`)
+3. Falls back to the current agent's model/provider
+
+**Two ways to specify the model:**
+
+```jsonc
+// Option 1: provider/model in a single string (recommended)
+"summaryModel": "anthropic/claude-haiku-4-5"
+
+// Option 2: separate fields
+"summaryModel": "claude-haiku-4-5",
+"summaryProvider": "anthropic"
+```
+
+**Examples with different providers:**
+
+```jsonc
+// Anthropic
+"summaryModel": "anthropic/claude-haiku-4-5"
+
+// OpenAI
+"summaryModel": "openai/gpt-4o-mini"
+
+// Google
+"summaryModel": "google/gemini-2.5-flash"
+
+// DeepSeek
+"summaryModel": "deepseek/deepseek-chat"
+
+// Or via environment variables
+// LCM_SUMMARY_MODEL=gpt-4o-mini LCM_SUMMARY_PROVIDER=openai
+```
+
+**Choosing a model:** Summarization is a high-volume, low-complexity task — a fast, cheap model works best. We recommend `claude-haiku-4-5` or `gpt-4o-mini`. Using a large model (Opus, GPT-4o) works but adds cost and latency with no meaningful quality gain for compaction.
 
 ## Development
 
@@ -176,7 +219,7 @@ src/
   assembler.ts               # [MODIFIED] Import shared estimator + empty assistant skip
   compaction.ts              # [MODIFIED] Import shared estimator
   retrieval.ts               # [MODIFIED] Import shared estimator
-  summarize.ts               # [MODIFIED] Import shared estimator + auth false-positive fix
+  summarize.ts               # [MODIFIED] Import shared estimator + auth false-positive fix + recall-accuracy prompts
   db/
     migration.ts             # [MODIFIED] CJK token recount migration
 test/
