@@ -91,6 +91,17 @@ function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
+/**
+ * Extract agentId from a sessionKey formatted as "agent:<agentId>:<suffix>".
+ * Returns null if the sessionKey is absent or not in agent format.
+ */
+function extractAgentIdFromSessionKey(sessionKey: string | undefined): string | null {
+  if (!sessionKey) return null;
+  const parts = sessionKey.split(":");
+  if (parts[0] !== "agent" || parts.length < 3) return null;
+  return parts[1]?.trim() || null;
+}
+
 function toJson(value: unknown): string {
   const encoded = JSON.stringify(value);
   return typeof encoded === "string" ? encoded : "";
@@ -2010,6 +2021,7 @@ export class LcmContextEngine implements ContextEngine {
 
           const conversation = await this.conversationStore.getOrCreateConversation(params.sessionId, {
             sessionKey: params.sessionKey,
+            agentId: extractAgentIdFromSessionKey(params.sessionKey),
           });
           const conversationId = conversation.conversationId;
           const existingCount = await this.conversationStore.getMessageCount(conversationId);
@@ -2495,6 +2507,7 @@ export class LcmContextEngine implements ContextEngine {
     // Get or create conversation for this session
     const conversation = await this.conversationStore.getOrCreateConversation(sessionId, {
       sessionKey,
+      agentId: extractAgentIdFromSessionKey(sessionKey),
     });
     const conversationId = conversation.conversationId;
 
