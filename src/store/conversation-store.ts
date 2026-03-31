@@ -68,6 +68,7 @@ export type MessagePartRecord = {
 export type CreateConversationInput = {
   sessionId: string;
   sessionKey?: string;
+  agentId?: string;
   title?: string;
 };
 
@@ -75,6 +76,7 @@ export type ConversationRecord = {
   conversationId: ConversationId;
   sessionId: string;
   sessionKey: string | null;
+  agentId: string | null;
   title: string | null;
   bootstrappedAt: Date | null;
   createdAt: Date;
@@ -105,6 +107,7 @@ interface ConversationRow {
   conversation_id: number;
   session_id: string;
   session_key: string | null;
+  agent_id: string | null;
   title: string | null;
   bootstrapped_at: string | null;
   created_at: string;
@@ -159,6 +162,7 @@ function toConversationRecord(row: ConversationRow): ConversationRecord {
     conversationId: row.conversation_id,
     sessionId: row.session_id,
     sessionKey: row.session_key ?? null,
+    agentId: row.agent_id ?? null,
     title: row.title,
     bootstrappedAt: row.bootstrapped_at ? new Date(row.bootstrapped_at) : null,
     createdAt: new Date(row.created_at),
@@ -276,12 +280,12 @@ export class ConversationStore {
 
   async createConversation(input: CreateConversationInput): Promise<ConversationRecord> {
     const result = this.db
-      .prepare(`INSERT INTO conversations (session_id, session_key, title) VALUES (?, ?, ?)`)
-      .run(input.sessionId, input.sessionKey ?? null, input.title ?? null);
+      .prepare(`INSERT INTO conversations (session_id, session_key, agent_id, title) VALUES (?, ?, ?, ?)`)
+      .run(input.sessionId, input.sessionKey ?? null, input.agentId ?? null, input.title ?? null);
 
     const row = this.db
       .prepare(
-        `SELECT conversation_id, session_id, session_key, title, bootstrapped_at, created_at, updated_at
+        `SELECT conversation_id, session_id, session_key, agent_id, title, bootstrapped_at, created_at, updated_at
        FROM conversations WHERE conversation_id = ?`,
       )
       .get(Number(result.lastInsertRowid)) as unknown as ConversationRow;
@@ -292,7 +296,7 @@ export class ConversationStore {
   async getConversation(conversationId: ConversationId): Promise<ConversationRecord | null> {
     const row = this.db
       .prepare(
-        `SELECT conversation_id, session_id, session_key, title, bootstrapped_at, created_at, updated_at
+        `SELECT conversation_id, session_id, session_key, agent_id, title, bootstrapped_at, created_at, updated_at
        FROM conversations WHERE conversation_id = ?`,
       )
       .get(conversationId) as unknown as ConversationRow | undefined;
@@ -303,7 +307,7 @@ export class ConversationStore {
   async getConversationBySessionId(sessionId: string): Promise<ConversationRecord | null> {
     const row = this.db
       .prepare(
-        `SELECT conversation_id, session_id, session_key, title, bootstrapped_at, created_at, updated_at
+        `SELECT conversation_id, session_id, session_key, agent_id, title, bootstrapped_at, created_at, updated_at
        FROM conversations
        WHERE session_id = ?
        ORDER BY created_at DESC
@@ -317,7 +321,7 @@ export class ConversationStore {
   async getConversationBySessionKey(sessionKey: string): Promise<ConversationRecord | null> {
     const row = this.db
       .prepare(
-        `SELECT conversation_id, session_id, session_key, title, bootstrapped_at, created_at, updated_at
+        `SELECT conversation_id, session_id, session_key, agent_id, title, bootstrapped_at, created_at, updated_at
        FROM conversations
        WHERE session_key = ?
        LIMIT 1`,
@@ -350,7 +354,7 @@ export class ConversationStore {
 
   async getOrCreateConversation(
     sessionId: string,
-    titleOrOpts?: string | { title?: string; sessionKey?: string },
+    titleOrOpts?: string | { title?: string; sessionKey?: string; agentId?: string },
   ): Promise<ConversationRecord> {
     const opts = typeof titleOrOpts === "string" ? { title: titleOrOpts } : titleOrOpts ?? {};
     if (opts.sessionKey) {
@@ -381,7 +385,7 @@ export class ConversationStore {
       return existing;
     }
 
-    return this.createConversation({ sessionId, title: opts.title, sessionKey: opts.sessionKey });
+    return this.createConversation({ sessionId, title: opts.title, sessionKey: opts.sessionKey, agentId: opts.agentId });
   }
 
   async markConversationBootstrapped(conversationId: ConversationId): Promise<void> {

@@ -523,6 +523,7 @@ export function runLcmMigrations(
       conversation_id INTEGER PRIMARY KEY AUTOINCREMENT,
       session_id TEXT NOT NULL,
       session_key TEXT,
+      agent_id TEXT DEFAULT NULL,
       title TEXT,
       bootstrapped_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -668,7 +669,13 @@ export function runLcmMigrations(
     db.exec(`ALTER TABLE conversations ADD COLUMN session_key TEXT`);
   }
 
+  const hasAgentId = conversationColumns.some((col) => col.name === "agent_id");
+  if (!hasAgentId) {
+    db.exec(`ALTER TABLE conversations ADD COLUMN agent_id TEXT DEFAULT NULL`);
+  }
+
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS conversations_session_key_idx ON conversations (session_key)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS conversations_agent_id_idx ON conversations (agent_id)`);
   ensureSummaryDepthColumn(db);
   ensureSummaryMetadataColumns(db);
   ensureSummaryModelColumn(db);
